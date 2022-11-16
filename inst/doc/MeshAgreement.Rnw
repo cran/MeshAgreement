@@ -1,0 +1,309 @@
+\documentclass[11pt,%
+parskip=half,%
+paper=a4,%
+headings=small,%
+DIV15]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage[latin1]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[final,babel,activate=TRUE]{microtype}
+\usepackage{lmodern}
+\usepackage{upquote}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage[pdftex,%
+unicode=true,%
+pdfusetitle,%
+bookmarks=true,%
+plainpages=false,%
+colorlinks=true,%
+linkcolor=blue,%
+citecolor=blue,%
+filecolor=blue,%
+urlcolor=blue,%
+%bookmarksopen=true,%
+%bookmarksopenlevel=2,%
+breaklinks=false,%
+%pdfborder={0 0 1},%
+pdfpagelabels=true,%
+backref=false,%
+pdftitle={Assessing the agreement between 3D meshes using MeshAgreement for R},%
+pdfauthor={Daniel Wollschlaeger, Heiko Karle}]{hyperref}
+\usepackage{breakurl}
+\usepackage{apacite}                     % after hyperref
+%\usepackage[backend=bibtex]{biblatex}
+
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+
+%\VignetteIndexEntry{Assessing the agreement between 3D meshes using MeshAgreement for R}
+%\VignetteDepends{MeshAgreement}
+%\VignetteKeywords{MeshAgreement}
+%\VignettePackage{MeshAgreement}
+%\VignetteEngine{knitr::knitr}
+
+\begin{document}
+
+\title{Assessing the agreement between 3D meshes using \texttt{MeshAgreement} for \textsf{R}}
+\author{Daniel Wollschlaeger\\
+        \url{wollschlaeger@uni-mainz.de}
+        \and
+        Heiko Karle\\
+        \url{karle@uni-mainz.de}}
+\date{University Medical Center Mainz, Germany\\\today}
+
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+
+<<setup, include=FALSE>>=
+# set global chunk options
+knitr::opts_chunk$set(fig.align='center',
+                      fig.show='hold',
+                      tidy=FALSE,
+                      message=FALSE,
+                      warning=FALSE)
+
+options(replace.assign=TRUE,
+        useFancyQuotes=FALSE,
+        show.signif.stars=FALSE,
+        digits=4,
+        width=70)
+@
+
+\maketitle
+\tableofcontents
+
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+\section{Introduction}
+\label{sec:introduction}
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+
+\texttt{MeshAgreement} is an add-on package for the free statistical environment \textsf{R}\footnote{A free short introduction to \textsf{R} can be found at \url{https://www.statmethods.net/}.} \cite{RDevelopmentCoreTeam2008c}. It provides functionality to read 3D mesh files, to calculate distance-based as well as volume-overlap-based agreement measures for 3D structures, and to plot the meshes.
+
+The application motivating development of \texttt{MeshAgreement} is to compare delineated structures for radiotherapy treatment planning. In order to export 3D mesh files in PLY format from Varian Eclipse, you can use an ESAPI script included in the package. The path to the script can be found like this - re-run in current R session to find the correct path on a given system:
+
+<<cESAPI>>=
+esapi_location <- system.file("extdata", package="MeshAgreement")
+list.files(esapi_location, full.names=TRUE)
+@
+
+Computational geometry is carried out mainly using the \texttt{CGAL} library \cite{CGAL2022} via package \texttt{RcppCGAL} \cite{Dunipace2022} used in package \texttt{cgalMeshes} \cite{LaurentCM2022}. Distance maps are calculated using the \texttt{VCG} library \cite{VCG2022} via package \texttt{Rvcg} \cite{Schlager2017}.
+
+To install \texttt{MeshAgreement}, you need a current version of \textsf{R} and be online. Preferably, a free development environment like \textsf{R}Studio \cite{RStudio2022} should be used.
+
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+\section{Interfaces}
+\label{sec:interfaces}
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+
+\texttt{MeshAgreement} provides two interfaces geared towards users with different levels of familiarity with \textsf{R}: The regular command line functions and a built-in web application.
+
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+\subsection{\textsf{R} command line interface}
+\label{sec:Rinter}
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+
+Users familiar with \textsf{R} can use the \texttt{MeshAgreement} package functions from the \textsf{R} command line. This facilitates statistical post-processing of results with the full capabilities of \textsf{R}. After installing \texttt{MeshAgreement}, you should be able to run (function \texttt{get\_mesh\_agree()} is explained in section \ref{sec:meshagree}):
+
+<<cCmdlineA>>=
+## load MeshAgreement package - required for all following tasks
+library(MeshAgreement, verbose=FALSE)
+
+## get agreement measures for all pairs from list of meshes
+## data_heart_obsL: list of sample meshes included in MeshAgreement
+heartL <- mesh3dL_to_cgalMeshL(data_heart_obsL)
+
+## omit JSC/DSC to reduce run-time
+agreeW <- get_mesh_agree(heartL, do_ui=FALSE, silent=TRUE)
+agreeW
+@
+
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+\subsection{Web-based graphical user interface}
+\label{sec:webApp}
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+
+For users who are unfamiliar with \textsf{R}, \texttt{MeshAgreement} includes a \texttt{Shiny}-based web application \cite{Chang2022} running locally that eliminates the need to use \textsf{R} syntax.\footnote{A live demo is available at: \url{http://shiny.imbei.uni-mainz.de:3838/MeshAgreement/}} Note that packages \texttt{shiny} \cite{Chang2022}, \texttt{bs4Dash} \cite{Granjon2022}, \texttt{DT} \cite{Xie2022}, \texttt{sortable} \cite{deVries2022}, and \texttt{rgl} \cite{Murdoch2022} need to be installed to run the GUI. The different analysis steps are displayed in figures \ref{fig:shiny01home}, \ref{fig:shiny02data1}, \ref{fig:shiny02data2}, \ref{fig:shiny03agreement}, \ref{fig:shiny04view}, and \ref{fig:shiny05about}.
+
+<<cStartShiny>>=
+## install required packages
+# install.packages(c("shiny", "bs4Dash", "DT", "sortable", "rgl"))
+
+## load MeshAgreement package
+# library(MeshAgreement, verbose=FALSE)
+
+## start Shiny app
+# run_gui()
+@
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=12cm]{shiny01home}
+\caption{Welcome page in the \texttt{MeshAgreement} web application}
+\label{fig:shiny01home}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=12cm]{shiny02data1}
+\caption{Importing files with options in the \texttt{MeshAgreement} web application}
+\label{fig:shiny02data1}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=12cm]{shiny02data2}
+\caption{Defining comparisons for agreement measures by drag-and-drop of file lists in the \texttt{MeshAgreement} web application}
+\label{fig:shiny02data2}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=12cm]{shiny03agreement}
+\caption{Display distance-based and volume-overlap-based agreement measures for pairwise comparisons as well as as aggregated agreement over all pairs in the \texttt{MeshAgreement} web application}
+\label{fig:shiny03agreement}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=12cm]{shiny04view}
+\caption{View pairs of imported meshes together with a color-coded distance map in the \texttt{MeshAgreement} web application}
+\label{fig:shiny04view}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=12cm]{shiny05about}
+\caption{Background information on the \texttt{MeshAgreement} web application}
+\label{fig:shiny05about}
+\end{figure}
+
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+\section{Read mesh files}
+\label{sec:read}
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+
+Supported file formats are STL, PLY, OBJ, and OFF. If the same structures are contoured by three different observers, and the resulting mesh files are stored in three corresponding directories, reading in the observer/mesh list can look like this:
+
+<<cReadMesh1>>=
+# ff1 <- list.files("c:/meshes/obs1", pattern="PLY$", full.names=TRUE)
+# ff2 <- list.files("c:/meshes/obs2", pattern="PLY$", full.names=TRUE)
+# ff3 <- list.files("c:/meshes/obs3", pattern="PLY$", full.names=TRUE)
+# obsL <- read_mesh(list(Obs01=ff1, Obs02=ff2, Obs03=ff3),
+#                   reconstruct="AFS")
+@
+
+If a single structure is contoured by different observers, and all files are stored in the same directory, reading in requires two steps: First, the mesh files are imported into a mesh list, and second, the mesh list is transformed by assigning each mesh to a different observer.
+
+<<cReadMesh2>>=
+# ff    <- list.files("c:/meshes/", pattern="PLY$", full.names=TRUE)
+# meshL <- read_mesh_obs(ff)
+
+## assign each mesh to a different observer to enable all
+## pairwise comparisons
+# obsL <- meshL_to_observerL(meshL)
+@
+
+Information on the imported meshes can be printed.
+
+<<cPrintMesh>>=
+## data_heart_obsL: list of sample meshes included in MeshAgreement
+heartL <- mesh3dL_to_cgalMeshL(data_heart_obsL)
+print_mesh(heartL)
+@
+
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+\section{Mesh agreement measures}
+\label{sec:meshagree}
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+
+You can calculate distance-based as well as volume-overlap-based agreement measures for all pairwise comparisons between meshes. The following measures are included \cite{Sherer2021, Heimann2009, Fotina2012, Babalola2009, Hanna2010, Jaccard1912, Dice1945}:
+
+\begin{itemize}
+\item Distance-based measures
+\begin{itemize}
+\item DCOM: Euclidean distance between the respective center of mass of both meshes
+\item HDmax: Hausdorff distance - worst case, maximum of both directed Hausdorff distances
+\item HDavg: Hausdorff distance - average, arithmetic mean of both directed Hausdorff distances
+\item ASD: Average symmetric surface distance
+\item RMSD: Root mean squared symmetric surface distance
+\end{itemize}
+\item Volume-overlap-based measures
+\begin{itemize}
+\item JSC: Jaccard similarity coefficient
+\item DSC: Dice similarity coefficient
+\item Note that using package \texttt{Boov} \cite{LaurentBo2022} may have better performance for some meshes than the default \texttt{cgalMeshes}. Using \texttt{Boov} requires installing package \texttt{Boov} as well as setting option \texttt{boov=TRUE} when calling agreement functions.
+\end{itemize}
+\end{itemize}
+
+The functions that calculate agreement measures all have two versions.
+\begin{itemize}
+\item The main version of each function operates on an observer/mesh list as generated by \texttt{read\_mesh()}. These functions are \texttt{get\_mesh\_metro()} as an interface to the \texttt{Rvcg::vcgMetro()} distance map function, \texttt{get\_mesh\_ui()} to calculate the structures' union/intersection with corresponding volumes, and \texttt{get\_mesh\_agree()}, which does both of these tasks and summarizes results in a data frame.
+\item A second version of each function operates on a single pair of meshes as generated by \texttt{get\_mesh\_pairs()}. These functions are \texttt{get\_mesh\_metro\_pair()}, \texttt{get\_mesh\_ui\_pair()}, and \texttt{get\_mesh\_agree\_pair()}.
+\end{itemize}
+
+<<cMeshAgreementA>>=
+## already called above
+# heartL <- mesh3dL_to_cgalMeshL(data_heart_obsL)
+# agreeW <- get_mesh_agree(heartL, silent=TRUE)
+agreeW
+@
+
+A utility function transforms the data frame returned by \texttt{get\_mesh\_agree()} to long format which may be more convenient to post-process.
+
+<<cMeshAgreeLong>>=
+agreeL <- get_mesh_agree_long(agreeW)
+agreeL
+@
+
+Agreement measures for all pairwise comparisons for a structure between observers may be aggregated to assess overall agreement.
+
+<<cMeshAgreeAggr>>=
+agree_aggrW <- get_mesh_agree_aggr(agreeW)
+agree_aggrW
+@
+
+A utility function transforms the returned data frame to long format which may be more convenient to post-process.
+
+<<cMeshAgreeAggrLong>>=
+agree_aggrL <- get_mesh_agree_aggr_long(agree_aggrW)
+agree_aggrL
+@
+
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+\section*{Acknowledgements}
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+
+The authors thank St\'{e}phane Laurent, Eric Dunipace and Stefan Schlager for creating the necessary R packages for handling 3D meshes with methods from the CGAL and VCG libraries.
+
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+
+\bibliographystyle{apacite}
+\renewcommand{\BAvailFrom}{URL\ }
+\renewcommand{\APACrefURL}{URL\ }
+\bibliography{lit}
+
+%\printbibliography
+
+%%%%---------------------------------------------------------------------------
+%%%%---------------------------------------------------------------------------
+
+\end{document}
