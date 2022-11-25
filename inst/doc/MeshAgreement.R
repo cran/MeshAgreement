@@ -56,7 +56,7 @@ agreeW
 ## ----cPrintMesh-----------------------------------------------------
 ## data_heart_obsL: list of sample meshes included in MeshAgreement
 heartL <- mesh3dL_to_cgalMeshL(data_heart_obsL)
-print_mesh(heartL)
+get_mesh_info(heartL)
 
 ## ----cMeshAgreementA------------------------------------------------
 ## already called above
